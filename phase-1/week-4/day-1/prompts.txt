@@ -1,0 +1,46 @@
+ROLE: Act as an API Architect performing a read-only impact analysis on this entire project/workspace.
+
+CONTEXT:
+- After the agent launches, the application currently navigates directly to the "Upload File" page.
+- I want to introduce a new UI step BEFORE the Upload File page: a radio-button selector with two options - "Upload File" and "Upload Link".
+- "Upload File" is the existing, already-implemented flow.
+- "Upload Link" is new: it must accept a valid URL as input and generate test cases from the content available at that link.
+
+TASK:
+Identify every file that would be impacted by this change, across the whole codebase (frontend UI, routing/navigation, state management, API/service layer, backend endpoints, models/DTOs, validation, config, and tests).
+
+[STRICT] DO NOT write, edit, generate, or modify ANY code in this turn.
+[STRICT] DO NOT implement the feature. Analysis only.
+[STRICT] DO NOT alter, refactor, or "improve" the existing Upload File flow. It must remain functionally unchanged. Only note where it is touched by the new routing/selector, if at all.
+[STRICT] Base findings ONLY on files that actually exist in this workspace. If you cannot locate or read a file, say so explicitly - do not assume, infer, or invent file names or paths.
+[STRICT] If any requirement is ambiguous (e.g., where the radio selector should live, how URL content is fetched, where test-case generation is triggered), ask clarifying questions instead of guessing.
+
+REQUIRED OUTPUT FORMAT:
+1. Impacted files table with columns: File Path | Layer (UI / routing / service / backend / model / validation / config / test) | Reason for impact | Change type (new file / modify).
+2. New files that must be created (if any), listed separately with their proposed purpose.
+3. Open questions / assumptions that need my confirmation before implementation.
+4. A one-line confirmation that no code was changed.
+
+Once I review this analysis, I will trigger implementation separately in Agent Mode.
+
+
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+ROLE: Senior Test Automation Architect enhancing this existing application.
+
+CONTEXT:
+The app already generates test cases via an LLM call. Two changes are needed:
+1. UI label change: the existing radio button currently labelled "Upload link" must be renamed to "Accept link".
+2. Automatic categorization: each generated test case should be labelled Smoke, Sanity, Regression, or Functional, and the results displayed grouped by category in a clear, user-friendly format.
+
+[STRICT] The "Upload link" to "Accept link" change is a UI LABEL CHANGE ONLY. Do not touch that button's functionality, handlers, state, routing, or any logic behind it.
+[STRICT] Search the entire workspace for every occurrence of "Upload link". If it is referenced in test files, selectors, locators, snapshots, or fixtures, update those references too so nothing breaks on rename. List every file you changed for this.
+[STRICT] Extend the EXISTING test case generation LLM call to return the category as an additional field per test case. Do NOT add a second LLM call and do NOT add a separate rule-based classifier.
+[STRICT] Assign exactly ONE category per test case from this fixed set only: Smoke, Sanity, Regression, Functional.
+[STRICT] Must integrate with the existing generation flow without breaking or changing any current feature. Existing test case content and output must remain intact.
+[STRICT] Do NOT refactor or rename existing working code unless strictly required. If unavoidable, call it out and explain why.
+[STRICT] Handle responses where the category field is missing or invalid - do not let it crash the flow.
+[STRICT] Base all changes ONLY on files that exist in this workspace. If you cannot find something, say so - do not guess file names or structures.
+[STRICT] Add tests for the new categorization behavior. Do not delete or weaken existing tests.
+
+Before coding, give me a short plan: the updated prompt/schema for the generation call, which files you will add vs. modify, and every file where "Upload link" appears. Then implement.
