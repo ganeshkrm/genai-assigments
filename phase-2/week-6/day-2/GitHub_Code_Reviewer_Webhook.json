@@ -1,0 +1,176 @@
+{
+  "name": "GitHub Code Reviewer - Webhook UI",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "github-code-review",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "b4a814d5-c4ce-4551-96f1-f8fc44e61cb1",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -320,
+        0
+      ],
+      "webhookId": "1dafe888-3bba-45cd-b856-0c42fde4619d"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Normalize the incoming GitHub URL and convert blob -> raw\nconst input = $input.first().json;\nconst body = input.body || input;\nlet url = (body.repoUrl || body.githubUrl || body.url || '').toString().trim();\n\nif (!url) {\n  throw new Error('No GitHub URL provided. Send JSON { \"repoUrl\": \"<github file url>\" }.');\n}\n\n// Basic shape validation\nif (!/^https?:\\/\\//i.test(url)) {\n  throw new Error('Invalid URL. Provide a full http(s) GitHub file URL.');\n}\n\nlet rawUrl = url;\n// github.com/<owner>/<repo>/blob/<branch>/<path>  ->  raw.githubusercontent.com/<owner>/<repo>/<branch>/<path>\nconst m = url.match(/^https?:\\/\\/github\\.com\\/([^\\/]+)\\/([^\\/]+)\\/blob\\/(.+)$/i);\nif (m) {\n  rawUrl = `https://raw.githubusercontent.com/${m[1]}/${m[2]}/${m[3]}`;\n}\n\n// strip any query string / fragment from raw url\nrawUrl = rawUrl.split('#')[0].split('?')[0];\n\nconst fileName = rawUrl.split('/').pop() || 'source';\n\nreturn [{ json: { sourceUrl: url, rawUrl, fileName } }];\n"
+      },
+      "id": "f59ef839-fd10-45f6-924d-676c4e7d2a00",
+      "name": "Normalize URL",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -96,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.rawUrl }}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "text"
+            }
+          }
+        }
+      },
+      "id": "3ee8af7a-d97a-4832-a9d2-96048e12f94f",
+      "name": "Fetch File",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        128,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=You are a Senior Test Automation Architect and Senior SDET engineer performing a professional code review.\n\nReview the source file below, which was fetched from GitHub.\n\nFile: {{ $('Normalize URL').item.json.fileName }}\nSource URL: {{ $('Normalize URL').item.json.sourceUrl }}\n\n=== CODE START ===\n{{ $('Fetch File').item.json.data }}\n=== CODE END ===\n\nReturn your review in clean GitHub-flavoured Markdown with exactly these sections:\n## Summary\n## Key Findings\n(For each finding give a severity tag: High, Medium or Low.)\n## Code Quality and Best Practices\n## Potential Bugs and Risks\n## Suggested Improvements\n(Concrete, with short example snippets where useful.)\n## Overall Assessment\n\nBe specific and reference the actual code. Do not invent code that is not present. Use plain hyphens only, never em dashes or en dashes."
+      },
+      "id": "bc987a00-3a2c-439d-89e0-5ce3cd08dbc6",
+      "name": "Code Review (LLM Chain)",
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.5,
+      "position": [
+        336,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "model": "openai/gpt-oss-120b",
+        "options": {}
+      },
+      "id": "fa206f21-ca69-4a9e-b5ca-6ef58ba4b7e2",
+      "name": "Groq Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [
+        336,
+        208
+      ],
+      "credentials": {
+        "groqApi": {
+          "id": "Oa4EnRkSPrje62sZ",
+          "name": "Groq account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { \"success\": true, \"fileName\": $('Normalize URL').item.json.fileName, \"sourceUrl\": $('Normalize URL').item.json.sourceUrl, \"rawUrl\": $('Normalize URL').item.json.rawUrl, \"review\": $json.text, \"reviewedAt\": $now.toISO() } }}",
+        "options": {}
+      },
+      "id": "008ded70-61a4-4c62-83ef-71c031896ad3",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        624,
+        0
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Normalize URL",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize URL": {
+      "main": [
+        [
+          {
+            "node": "Fetch File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch File": {
+      "main": [
+        [
+          {
+            "node": "Code Review (LLM Chain)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code Review (LLM Chain)": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Groq Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Code Review (LLM Chain)",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": true
+  },
+  "versionId": "a79c8006-a42e-4d0d-bfe0-a564c2664d68",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "1e58e72a8af17131b370926a0180b2c76ba7f1c22f795bae8eb86869e3cd4ce8"
+  },
+  "nodeGroups": [],
+  "id": "7ZbPNpLvG1OYvQvv",
+  "tags": []
+}
