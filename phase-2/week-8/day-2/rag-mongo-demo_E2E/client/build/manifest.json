@@ -1,0 +1,16 @@
+{
+  "short_name": "RAG Pipeline",
+  "name": "RAG Pipeline AI Test Case Platform",
+  "icons": [
+    {
+      "src": "favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ],
+  "start_url": ".",
+  "display": "standalone",
+  "theme_color": "#5E10B1",
+  "background_color": "#F2F2F8"
+}
